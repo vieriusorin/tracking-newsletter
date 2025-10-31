@@ -94,6 +94,17 @@ async function test404() {
   }
 }
 
+async function testReset() {
+  console.log('\n🔍 Testing /reset endpoint...');
+  try {
+    const response = await makeRequest('/reset');
+    console.log(`✅ Status: ${response.statusCode}`);
+    console.log(`Response includes: "Tracking Data Reset"`);
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   console.log('🚀 Starting Email Tracking Server Tests');
@@ -112,12 +123,29 @@ async function runTests() {
   console.log('\nNext steps:');
   console.log('1. Check the dashboard: http://localhost:3000/dashboard');
   console.log('2. View tracking data in email-opens.json');
+  console.log('3. To reset data: http://localhost:3000/reset');
+  console.log('\nTo test reset endpoint:');
+  console.log('Run: node test-server.js reset');
 }
 
 // Run tests
-runTests().catch(error => {
-  console.error('\n❌ Test suite failed:', error.message);
-  console.log('\nMake sure the server is running with: npm start');
-  process.exit(1);
-});
+const arg = process.argv[2];
+
+if (arg === 'reset') {
+  console.log('🚀 Testing Reset Endpoint');
+  console.log('========================================');
+  testReset().then(() => {
+    console.log('\n✅ Reset test completed!');
+    console.log('Check http://localhost:3000/dashboard to verify data was cleared');
+  }).catch(error => {
+    console.error('\n❌ Reset test failed:', error.message);
+    process.exit(1);
+  });
+} else {
+  runTests().catch(error => {
+    console.error('\n❌ Test suite failed:', error.message);
+    console.log('\nMake sure the server is running with: npm start');
+    process.exit(1);
+  });
+}
 

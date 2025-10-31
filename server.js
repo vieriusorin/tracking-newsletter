@@ -123,6 +123,12 @@ app.get('/', (req, res) => {
           <small>Visual dashboard with tracking data and statistics</small>
         </div>
         
+        <div class="endpoint">
+          <strong>🗑️ Reset Data (Development):</strong><br>
+          <a href="/reset" class="link">GET /reset</a><br>
+          <small>Clear all tracking data - useful for development/testing</small>
+        </div>
+        
         <h2>Example HTML Tracking Pixel:</h2>
         <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;"><code>&lt;img src="${req.protocol}://${req.get('host')}/track?email=user@company.com&user=John&newsletter=oct-2025" width="1" height="1" style="display:none;" alt="" /&gt;</code></pre>
       </body>
@@ -251,6 +257,94 @@ app.get('/stats/:newsletter', (req, res) => {
   console.log('📈 Newsletter stats requested:', newsletter, '- Opens:', stats.totalOpens, 'Unique:', stats.uniqueUsers);
   
   res.json(stats);
+});
+
+// RESET ENDPOINT - Clear all tracking data (development only)
+app.post('/reset', (req, res) => {
+  console.log('🗑️  Resetting all tracking data...');
+  
+  const success = writeTrackingData([]);
+  
+  if (success) {
+    console.log('✅ All tracking data cleared successfully');
+    res.json({ 
+      success: true, 
+      message: 'All tracking data has been reset',
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    console.log('❌ Failed to reset tracking data');
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to reset tracking data' 
+    });
+  }
+});
+
+// GET version of reset for easy browser access
+app.get('/reset', (req, res) => {
+  console.log('🗑️  Resetting all tracking data...');
+  
+  const success = writeTrackingData([]);
+  
+  if (success) {
+    console.log('✅ All tracking data cleared successfully');
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Reset Complete</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 10px;
+              box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+              text-align: center;
+              max-width: 500px;
+            }
+            h1 { color: #2c3e50; margin-bottom: 20px; }
+            p { color: #666; margin-bottom: 30px; }
+            a {
+              display: inline-block;
+              background: #667eea;
+              color: white;
+              padding: 12px 24px;
+              border-radius: 5px;
+              text-decoration: none;
+              margin: 5px;
+            }
+            a:hover { background: #5568d3; }
+            .success { color: #27ae60; font-size: 3em; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="success">✅</div>
+            <h1>Tracking Data Reset</h1>
+            <p>All tracking data has been cleared successfully!</p>
+            <p><small>Timestamp: ${new Date().toISOString()}</small></p>
+            <div>
+              <a href="/dashboard">View Dashboard</a>
+              <a href="/stats">View Stats</a>
+              <a href="/">Home</a>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  } else {
+    res.status(500).send('Failed to reset tracking data');
+  }
 });
 
 // 4. DASHBOARD ENDPOINT - HTML page with styling

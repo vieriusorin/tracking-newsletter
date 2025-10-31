@@ -120,6 +120,25 @@ GET /health
 
 Returns server health status.
 
+### 7. Reset Data (Development Only)
+```
+GET /reset
+POST /reset
+```
+
+Clears all tracking data from the system. Useful during development/testing.
+
+**Example:**
+```bash
+# Using browser
+http://localhost:3000/reset
+
+# Using curl
+curl -X POST http://localhost:3000/reset
+```
+
+⚠️ **Warning:** This will permanently delete all tracking data. Use with caution!
+
 ## 🌐 Deploying to Render.com
 
 1. Create a new Web Service on [Render.com](https://render.com)
@@ -216,6 +235,34 @@ This is designed for **internal use** only. For production:
 4. Set up proper CORS policies
 5. Use HTTPS in production
 6. Consider data retention policies
+
+## 🧹 Resetting Tracking Data (Development)
+
+During development, you may want to clear all tracking data. Here are three easy ways:
+
+### Method 1: Using the Reset Endpoint (Easiest)
+Simply visit: `http://localhost:3000/reset` in your browser
+
+Or use curl:
+```bash
+curl -X POST http://localhost:3000/reset
+```
+
+### Method 2: Delete the Tracking File
+```bash
+# Windows PowerShell
+Remove-Item email-opens.json
+
+# Linux/Mac
+rm email-opens.json
+```
+The file will be automatically recreated on next server start.
+
+### Method 3: Manual Edit
+Open `email-opens.json` and replace contents with:
+```json
+[]
+```
 
 ## 🐛 Troubleshooting
 
