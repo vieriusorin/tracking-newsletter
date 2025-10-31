@@ -113,14 +113,51 @@ Visual dashboard showing:
 - Last 50 email opens in a table
 - Real-time statistics
 
-### 6. Health Check
+### 6. Historical Analytics
+```
+GET /history
+```
+
+Visual dashboard showing monthly email open trends with:
+- Total months tracked
+- Monthly comparison chart
+- Growth indicators (month-over-month)
+- Average opens per month
+- Peak performance months
+
+```
+GET /stats/history
+```
+
+Returns JSON with monthly aggregated statistics:
+```json
+{
+  "totalMonths": 6,
+  "monthlyStats": [
+    {
+      "month": "October 2025",
+      "yearMonth": "2025-10",
+      "totalOpens": 150,
+      "uniqueUsers": 45,
+      "uniqueNewsletters": 3,
+      "avgOpensPerUser": "3.33",
+      "newsletters": ["oct-2025", "newsletter-1", "newsletter-2"]
+    }
+  ],
+  "overallTrend": "Growing",
+  "firstRecord": "2025-10-01T10:00:00.000Z",
+  "lastRecord": "2025-10-31T23:59:00.000Z"
+}
+```
+
+### 7. Health Check
 ```
 GET /health
 ```
 
 Returns server health status.
 
-### 7. Reset Data (Development Only)
+### 8. Reset Data (Development Only)
 ```
 GET /reset
 POST /reset
@@ -263,6 +300,23 @@ Open `email-opens.json` and replace contents with:
 ```json
 []
 ```
+
+## 🎲 Generate Sample Data (Testing)
+
+To test the historical analytics features with realistic data spanning multiple months:
+
+```bash
+node generate-sample-data.js
+```
+
+This will:
+- Generate 6 months of sample tracking data
+- Create records for 10 different users
+- Include 4 different newsletter types
+- Show realistic growth trends
+- Perfect for testing the `/history` dashboard
+
+**Note:** This will replace any existing tracking data. Make sure to back up real data first!
 
 ## 🐛 Troubleshooting
 

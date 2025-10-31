@@ -83,6 +83,35 @@ async function testNewsletterStats() {
   }
 }
 
+async function testHistoryStats() {
+  console.log('\n🔍 Testing /stats/history endpoint...');
+  try {
+    const response = await makeRequest('/stats/history');
+    console.log(`✅ Status: ${response.statusCode}`);
+    const data = JSON.parse(response.body);
+    console.log(`Total Months: ${data.totalMonths}`);
+    console.log(`Overall Trend: ${data.overallTrend}`);
+    if (data.monthlyStats.length > 0) {
+      const latest = data.monthlyStats[data.monthlyStats.length - 1];
+      console.log(`Latest Month: ${latest.month} - Opens: ${latest.totalOpens}`);
+    }
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+}
+
+async function testHistoryDashboard() {
+  console.log('\n🔍 Testing /history endpoint...');
+  try {
+    const response = await makeRequest('/history');
+    console.log(`✅ Status: ${response.statusCode}`);
+    console.log(`Response length: ${response.body.length} bytes`);
+    console.log(`Contains "Historical Analytics": ${response.body.includes('Historical Analytics')}`);
+  } catch (error) {
+    console.log(`❌ Error: ${error.message}`);
+  }
+}
+
 async function test404() {
   console.log('\n🔍 Testing 404 handler...');
   try {
@@ -116,16 +145,20 @@ async function runTests() {
   await testTrackingPixel();
   await testStats();
   await testNewsletterStats();
+  await testHistoryStats();
+  await testHistoryDashboard();
   await test404();
   
   console.log('\n========================================');
   console.log('✅ All tests completed!');
   console.log('\nNext steps:');
   console.log('1. Check the dashboard: http://localhost:3000/dashboard');
-  console.log('2. View tracking data in email-opens.json');
-  console.log('3. To reset data: http://localhost:3000/reset');
-  console.log('\nTo test reset endpoint:');
-  console.log('Run: node test-server.js reset');
+  console.log('2. View historical trends: http://localhost:3000/history');
+  console.log('3. View tracking data in email-opens.json');
+  console.log('4. To reset data: http://localhost:3000/reset');
+  console.log('\nSpecial commands:');
+  console.log('- Test reset: node test-server.js reset');
+  console.log('- Generate sample data: node generate-sample-data.js');
 }
 
 // Run tests

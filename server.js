@@ -124,6 +124,12 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="endpoint">
+          <strong>📊 Historical Analytics:</strong><br>
+          <a href="/history" class="link">GET /history</a> | <a href="/stats/history" class="link">GET /stats/history</a><br>
+          <small>Monthly trends and comparison data</small>
+        </div>
+        
+        <div class="endpoint">
           <strong>🗑️ Reset Data (Development):</strong><br>
           <a href="/reset" class="link">GET /reset</a><br>
           <small>Clear all tracking data - useful for development/testing</small>
@@ -257,6 +263,544 @@ app.get('/stats/:newsletter', (req, res) => {
   console.log('📈 Newsletter stats requested:', newsletter, '- Opens:', stats.totalOpens, 'Unique:', stats.uniqueUsers);
   
   res.json(stats);
+});
+
+// HISTORY STATS ENDPOINT - Monthly aggregated statistics
+app.get('/stats/history', (req, res) => {
+  const trackingData = readTrackingData();
+  
+  if (trackingData.length === 0) {
+    return res.json({
+      totalMonths: 0,
+      monthlyStats: [],
+      overallTrend: 'No data available'
+    });
+  }
+  
+  // Group data by year-month
+  const monthlyData = {};
+  
+  trackingData.forEach(record => {
+    const date = new Date(record.timestamp);
+    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const monthName = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    
+    if (!monthlyData[yearMonth]) {
+      monthlyData[yearMonth] = {
+        month: monthName,
+        yearMonth: yearMonth,
+        opens: [],
+        emails: new Set(),
+        newsletters: new Set()
+      };
+    }
+    
+    monthlyData[yearMonth].opens.push(record);
+    monthlyData[yearMonth].emails.add(record.email);
+    monthlyData[yearMonth].newsletters.add(record.newsletter);
+  });
+  
+  // Convert to array and calculate stats
+  const monthlyStats = Object.keys(monthlyData)
+    .sort()
+    .map(yearMonth => {
+      const data = monthlyData[yearMonth];
+      return {
+        month: data.month,
+        yearMonth: yearMonth,
+        totalOpens: data.opens.length,
+        uniqueUsers: data.emails.size,
+        uniqueNewsletters: data.newsletters.size,
+        avgOpensPerUser: (data.opens.length / data.emails.size).toFixed(2),
+        newsletters: Array.from(data.newsletters)
+      };
+    });
+  
+  // Calculate trend
+  let trend = 'Stable';
+  if (monthlyStats.length >= 2) {
+    const lastMonth = monthlyStats[monthlyStats.length - 1].totalOpens;
+    const prevMonth = monthlyStats[monthlyStats.length - 2].totalOpens;
+    if (lastMonth > prevMonth) trend = 'Growing';
+    else if (lastMonth < prevMonth) trend = 'Declining';
+  }
+  
+  console.log('📊 Historical stats requested - Months:', monthlyStats.length, 'Trend:', trend);
+  
+  res.json({
+    totalMonths: monthlyStats.length,
+    monthlyStats: monthlyStats,
+    overallTrend: trend,
+    firstRecord: trackingData[0].timestamp,
+    lastRecord: trackingData[trackingData.length - 1].timestamp
+  });
+});
+
+// HISTORY DASHBOARD - Visual monthly comparison
+app.get('/history', (req, res) => {
+  const trackingData = readTrackingData();
+  
+  if (trackingData.length === 0) {
+    return res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Historical Analytics</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+          }
+          .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          h1 { color: #2c3e50; }
+          p { color: #666; margin: 20px 0; }
+          a {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 5px;
+            text-decoration: none;
+          }
+          a:hover { background: #5568d3; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>📊 No Historical Data</h1>
+          <p>Start tracking emails to see monthly trends and comparisons!</p>
+          <a href="/dashboard">Go to Dashboard</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+  
+  // Group data by month
+  const monthlyData = {};
+  
+  trackingData.forEach(record => {
+    const date = new Date(record.timestamp);
+    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const monthName = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    
+    if (!monthlyData[yearMonth]) {
+      monthlyData[yearMonth] = {
+        month: monthName,
+        yearMonth: yearMonth,
+        opens: [],
+        emails: new Set(),
+        newsletters: new Set(),
+        dailyOpens: {}
+      };
+    }
+    
+    monthlyData[yearMonth].opens.push(record);
+    monthlyData[yearMonth].emails.add(record.email);
+    monthlyData[yearMonth].newsletters.add(record.newsletter);
+    
+    // Track daily opens
+    const day = date.getDate();
+    monthlyData[yearMonth].dailyOpens[day] = (monthlyData[yearMonth].dailyOpens[day] || 0) + 1;
+  });
+  
+  // Convert to sorted array
+  const monthlyStats = Object.keys(monthlyData)
+    .sort()
+    .map(yearMonth => {
+      const data = monthlyData[yearMonth];
+      return {
+        month: data.month,
+        yearMonth: yearMonth,
+        totalOpens: data.opens.length,
+        uniqueUsers: data.emails.size,
+        uniqueNewsletters: data.newsletters.size,
+        avgOpensPerUser: (data.opens.length / data.emails.size).toFixed(2),
+        newsletters: Array.from(data.newsletters),
+        peakDay: Object.keys(data.dailyOpens).reduce((a, b) => 
+          data.dailyOpens[a] > data.dailyOpens[b] ? a : b, 1
+        )
+      };
+    });
+  
+  // Generate chart data for visualization
+  const chartLabels = monthlyStats.map(s => s.month).join('","');
+  const chartOpens = monthlyStats.map(s => s.totalOpens).join(',');
+  const chartUsers = monthlyStats.map(s => s.uniqueUsers).join(',');
+  
+  // Generate table rows
+  const tableRows = monthlyStats.reverse().map((stat, index) => {
+    // Calculate growth indicator
+    let growthIndicator = '━';
+    let growthClass = 'neutral';
+    if (index < monthlyStats.length - 1) {
+      const current = stat.totalOpens;
+      const previous = monthlyStats[index + 1].totalOpens;
+      if (current > previous) {
+        growthIndicator = `↑ ${((current - previous) / previous * 100).toFixed(1)}%`;
+        growthClass = 'positive';
+      } else if (current < previous) {
+        growthIndicator = `↓ ${((previous - current) / previous * 100).toFixed(1)}%`;
+        growthClass = 'negative';
+      }
+    }
+    
+    return `
+      <tr>
+        <td><strong>${stat.month}</strong></td>
+        <td>${stat.totalOpens}</td>
+        <td>${stat.uniqueUsers}</td>
+        <td>${stat.uniqueNewsletters}</td>
+        <td>${stat.avgOpensPerUser}</td>
+        <td><span class="growth ${growthClass}">${growthIndicator}</span></td>
+      </tr>
+    `;
+  }).join('');
+  
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Historical Analytics - Email Tracking</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          padding: 20px;
+          color: #333;
+        }
+        
+        .container {
+          max-width: 1400px;
+          margin: 0 auto;
+        }
+        
+        .header {
+          text-align: center;
+          color: white;
+          margin-bottom: 30px;
+        }
+        
+        .header h1 {
+          font-size: 2.5em;
+          margin-bottom: 10px;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .header p {
+          font-size: 1.1em;
+          opacity: 0.95;
+        }
+        
+        .nav-links {
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        
+        .nav-links a {
+          display: inline-block;
+          background: rgba(255,255,255,0.2);
+          color: white;
+          padding: 10px 20px;
+          margin: 5px;
+          border-radius: 5px;
+          text-decoration: none;
+          transition: background 0.3s;
+        }
+        
+        .nav-links a:hover {
+          background: rgba(255,255,255,0.3);
+        }
+        
+        .summary-cards {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
+          margin-bottom: 30px;
+        }
+        
+        .summary-card {
+          background: white;
+          padding: 20px;
+          border-radius: 10px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          text-align: center;
+        }
+        
+        .summary-card .value {
+          font-size: 2.5em;
+          font-weight: bold;
+          color: #667eea;
+          margin-bottom: 5px;
+        }
+        
+        .summary-card .label {
+          color: #666;
+          font-size: 0.9em;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        
+        .chart-container {
+          background: white;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          margin-bottom: 30px;
+        }
+        
+        .chart-container h2 {
+          color: #2c3e50;
+          margin-bottom: 20px;
+        }
+        
+        .simple-chart {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-around;
+          height: 250px;
+          border-left: 2px solid #ddd;
+          border-bottom: 2px solid #ddd;
+          padding: 20px;
+          gap: 10px;
+        }
+        
+        .bar-group {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+        
+        .bar {
+          width: 100%;
+          background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+          border-radius: 5px 5px 0 0;
+          position: relative;
+          transition: transform 0.3s;
+          min-height: 20px;
+        }
+        
+        .bar:hover {
+          transform: translateY(-5px);
+        }
+        
+        .bar-label {
+          font-size: 0.8em;
+          color: #666;
+          text-align: center;
+          writing-mode: horizontal-tb;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 100%;
+        }
+        
+        .bar-value {
+          position: absolute;
+          top: -25px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-weight: bold;
+          color: #2c3e50;
+          font-size: 0.9em;
+        }
+        
+        .table-container {
+          background: white;
+          border-radius: 10px;
+          padding: 25px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          overflow-x: auto;
+        }
+        
+        .table-container h2 {
+          color: #2c3e50;
+          margin-bottom: 20px;
+        }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        
+        thead {
+          background: #f8f9fa;
+        }
+        
+        th {
+          padding: 15px;
+          text-align: left;
+          font-weight: 600;
+          color: #2c3e50;
+          border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+          padding: 12px 15px;
+          border-bottom: 1px solid #e9ecef;
+        }
+        
+        tbody tr:hover {
+          background: #f8f9fa;
+        }
+        
+        .growth {
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-weight: 500;
+          font-size: 0.9em;
+        }
+        
+        .growth.positive {
+          background: #d4edda;
+          color: #155724;
+        }
+        
+        .growth.negative {
+          background: #f8d7da;
+          color: #721c24;
+        }
+        
+        .growth.neutral {
+          background: #e9ecef;
+          color: #666;
+        }
+        
+        .footer {
+          text-align: center;
+          color: white;
+          margin-top: 30px;
+          opacity: 0.9;
+        }
+        
+        @media (max-width: 768px) {
+          .header h1 {
+            font-size: 1.8em;
+          }
+          
+          .summary-card .value {
+            font-size: 2em;
+          }
+          
+          .bar-label {
+            font-size: 0.7em;
+          }
+          
+          table {
+            font-size: 0.9em;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>📊 Historical Analytics</h1>
+          <p>Monthly email open trends and comparisons</p>
+        </div>
+        
+        <div class="nav-links">
+          <a href="/">Home</a>
+          <a href="/dashboard">Current Dashboard</a>
+          <a href="/stats">API Stats</a>
+          <a href="/stats/history">History JSON</a>
+        </div>
+        
+        <div class="summary-cards">
+          <div class="summary-card">
+            <div class="value">${monthlyStats.length}</div>
+            <div class="label">Months Tracked</div>
+          </div>
+          
+          <div class="summary-card">
+            <div class="value">${trackingData.length}</div>
+            <div class="label">Total Opens</div>
+          </div>
+          
+          <div class="summary-card">
+            <div class="value">${Math.max(...monthlyStats.map(s => s.totalOpens))}</div>
+            <div class="label">Peak Month Opens</div>
+          </div>
+          
+          <div class="summary-card">
+            <div class="value">${(trackingData.length / monthlyStats.length).toFixed(0)}</div>
+            <div class="label">Avg Opens/Month</div>
+          </div>
+        </div>
+        
+        <div class="chart-container">
+          <h2>📈 Monthly Opens Trend</h2>
+          <div class="simple-chart">
+            ${monthlyStats.slice().reverse().map(stat => {
+              const maxOpens = Math.max(...monthlyStats.map(s => s.totalOpens));
+              const height = (stat.totalOpens / maxOpens) * 100;
+              const shortMonth = stat.month.split(' ')[0].substring(0, 3);
+              return `
+                <div class="bar-group">
+                  <div class="bar" style="height: ${height}%">
+                    <div class="bar-value">${stat.totalOpens}</div>
+                  </div>
+                  <div class="bar-label">${shortMonth}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <h2>Monthly Comparison Table</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Total Opens</th>
+                <th>Unique Users</th>
+                <th>Newsletters</th>
+                <th>Avg Opens/User</th>
+                <th>Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="footer">
+          <p>Data range: ${new Date(trackingData[0].timestamp).toLocaleDateString()} - ${new Date(trackingData[trackingData.length - 1].timestamp).toLocaleDateString()}</p>
+          <p>Last updated: ${new Date().toLocaleString()}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  console.log('📊 Historical dashboard accessed');
+  res.send(html);
 });
 
 // RESET ENDPOINT - Clear all tracking data (development only)
@@ -587,7 +1131,10 @@ app.get('/dashboard', (req, res) => {
         <div class="table-container">
           <div class="table-header">
             <h2>Recent Email Opens (Last 50)</h2>
-            <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
+            <div>
+              <button class="refresh-btn" onclick="location.href='/history'" style="margin-right: 10px;">📊 View History</button>
+              <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
+            </div>
           </div>
           
           ${recentOpens.length > 0 ? `

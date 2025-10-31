@@ -23,7 +23,9 @@ Server runs at: **http://localhost:3000**
 | `GET /stats` | Overall statistics JSON |
 | `GET /stats/:newsletter` | Newsletter-specific stats |
 | `GET /dashboard` | Visual analytics dashboard |
-| `GET /reset` | **Clear all tracking data** |
+| `GET /history` | **Monthly trends & comparisons** |
+| `GET /stats/history` | Historical data JSON |
+| `GET /reset` | Clear all tracking data |
 | `GET /health` | Server health check |
 
 ## 🧹 How to Reset Tracking Data
@@ -68,6 +70,8 @@ Add this to your HTML email (replace with your values):
 
 ### Run all tests:
 ```bash
+npm test
+# or
 node test-server.js
 ```
 
@@ -75,6 +79,14 @@ node test-server.js
 ```bash
 node test-server.js reset
 ```
+
+### Generate sample historical data:
+```bash
+npm run generate-data
+# or
+node generate-sample-data.js
+```
+This creates 6 months of sample data to test the history features!
 
 ### Manual testing:
 1. Open `example-email.html` in a browser
@@ -88,6 +100,13 @@ node test-server.js reset
 - Total opens & unique users
 - Last 50 opens in a table
 - Real-time stats
+
+### Historical Analytics (Visual)
+**http://localhost:3000/history**
+- Monthly comparison chart
+- Growth indicators (↑/↓ percentages)
+- Peak performance months
+- Trend analysis
 
 ### Stats API (JSON)
 **http://localhost:3000/stats**
@@ -110,6 +129,18 @@ node test-server.js reset
 }
 ```
 
+### Historical Stats (JSON)
+**http://localhost:3000/stats/history**
+```json
+{
+  "totalMonths": 6,
+  "monthlyStats": [...],
+  "overallTrend": "Growing",
+  "firstRecord": "2025-10-01T10:00:00.000Z",
+  "lastRecord": "2025-10-31T23:59:00.000Z"
+}
+```
+
 ## 🌐 Deployment
 
 ### Render.com (Free)
@@ -127,10 +158,12 @@ fly deploy
 ## 💡 Development Tips
 
 1. **Clear test data frequently** using `/reset` endpoint
-2. **Check console logs** for real-time tracking events
-3. **View `email-opens.json`** to see raw data
-4. **Use the dashboard** for quick visualization
-5. **Test with `example-email.html`** provided
+2. **Generate sample data** with `node generate-sample-data.js` to test history
+3. **Check console logs** for real-time tracking events
+4. **View `email-opens.json`** to see raw data
+5. **Use the dashboard** for quick visualization
+6. **Test with `example-email.html`** provided
+7. **View history trends** at `/history` after generating sample data
 
 ## 🐛 Common Issues
 
@@ -172,13 +205,19 @@ npm start
 npm run dev
 
 # Run tests
-node test-server.js
+npm test
+
+# Generate sample data (6 months)
+npm run generate-data
 
 # Reset tracking data (via test script)
 node test-server.js reset
 
 # View dashboard
 open http://localhost:3000/dashboard
+
+# View historical trends
+open http://localhost:3000/history
 
 # Reset data (browser)
 open http://localhost:3000/reset

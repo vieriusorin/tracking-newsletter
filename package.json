@@ -1,14 +1,16 @@
 {
   "name": "internal-email-tracking-server",
-  "version": "1.0.0",
-  "description": "Email open tracking system for internal company newsletters",
+  "version": "1.1.0",
+  "description": "Email open tracking system for internal company newsletters with historical analytics",
   "main": "server.js",
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node test-server.js",
+    "generate-data": "node generate-sample-data.js"
   },
   "keywords": [
     "email",
